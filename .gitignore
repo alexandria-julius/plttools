@@ -8,3 +8,5 @@ test-reports
 build
 dist
 plttools.egg-info
+.idea
+.python-version
