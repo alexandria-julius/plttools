@@ -2,8 +2,8 @@
 # pylint: disable=line-too-long
 
 import pandas as pd
-from aggregationtools import plt_calculator, EPCurve, EPType
-from aggregationtools.plt import PLT
+from plttools import plt_calculator, EPCurve, EPType
+from plttools.plt import PLT
 
 
 def test_calculate_oep_curve():

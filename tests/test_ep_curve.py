@@ -2,7 +2,7 @@
 # pylint: disable=too-many-lines
 import pandas as pd
 import pytest
-from aggregationtools import EPCurve, EPType
+from plttools import EPCurve, EPType
 
 
 def test_loss_at_a_given_return_period():

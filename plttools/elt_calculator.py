@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from scipy.fft import fft, ifft
 from scipy.stats import beta
-from aggregationtools import ELT, ep_curve
+from plttools import ELT, ep_curve
 
 
 def calculate_oep_curve(elt, grid_size=2**14, max_loss_factor=5):

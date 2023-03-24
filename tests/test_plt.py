@@ -1,6 +1,6 @@
 """ Tests PLT """
 import pytest
-from aggregationtools import PLT
+from plttools import PLT
 
 
 def test_get_aal():

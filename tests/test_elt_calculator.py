@@ -2,8 +2,8 @@
 # pylint: disable=line-too-long
 import pandas as pd
 
-from aggregationtools import elt_calculator, EPCurve, EPType
-from aggregationtools.elt import ELT
+from plttools import elt_calculator, EPCurve, EPType
+from plttools.elt import ELT
 import pytest
 import numpy
 

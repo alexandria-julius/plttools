@@ -4,7 +4,7 @@ PLT calculator functions.
 
 import pandas as pd
 import numpy as np
-from aggregationtools import ep_curve, PLT
+from plttools import ep_curve, PLT
 
 
 def calculate_oep_curve(plt, number_of_simulations):
