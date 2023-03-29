@@ -1,7 +1,6 @@
 """ elt Calculator
 ELT calculator functions
 """
-import numpy
 import math
 import pandas as pd
 import numpy as np
@@ -25,7 +24,7 @@ def calculate_oep_curve(elt, grid_size=2**14, max_loss_factor=5):
     """
     elt_lambda = ELT(elt).get_lambda()
     severity_distribution, severity_density_function = calculate_severity_distribution(elt, grid_size, max_loss_factor)
-    severity_distribution['OEP'] = 1 - numpy.exp(-elt_lambda * severity_distribution['CEP'])
+    severity_distribution['OEP'] = 1 - np.exp(-elt_lambda * severity_distribution['CEP'])
     oep = severity_distribution.rename(columns={'OEP': 'Probability', 'threshold': 'Loss'})
 
     return ep_curve.EPCurve(oep, ep_type=ep_curve.EPType.OEP)
@@ -67,9 +66,9 @@ def calculate_aep_curve(elt, grid_size=2**14, max_loss_factor=5):
         elt.at[index] = row
 
     fx_hat = fft(fx2)
-    fs_hat = numpy.exp(-elt_lambda*(1 - fx_hat))
-    fs = numpy.real(ifft(fs_hat, norm="forward") / grid_size)
-    fs_cum = numpy.cumsum(fs)
+    fs_hat = np.exp(-elt_lambda*(1 - fx_hat))
+    fs = np.real(ifft(fs_hat, norm="forward") / grid_size)
+    fs_cum = np.cumsum(fs)
     severity_density_function['AEP'] = 1 - fs_cum
     aep = severity_density_function.rename(columns={'AEP': 'Probability', 'threshold': 'Loss'})
 
@@ -103,7 +102,7 @@ def calculate_severity_distribution(elt, grid_size=2**14, max_loss_factor=5):
     severity_distribution
     """
     max_loss = _max_loss(elt, max_loss_factor=max_loss_factor)
-    loss_thresholds = numpy.linspace(0, max_loss, num=grid_size+1)
+    loss_thresholds = np.linspace(0, max_loss, num=grid_size+1)
     probability = {}
     CEP = {}
 
@@ -172,4 +171,3 @@ def _poisson_pdf(n, elt_lambda):
 def _max_loss(elt, max_loss_factor=5):
     max_loss = max_loss_factor*elt['Loss'].max()
     return max_loss
-
