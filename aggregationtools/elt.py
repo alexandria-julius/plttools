@@ -19,19 +19,19 @@ class ELT:
 
     REQUIRED_COLUMNS = ["EventId", "Rate", "Loss", "StdDevI", "StdDevC"]
 
-    def __init__(self, data: list):
+    def __init__(self, data):
         """ Type initialiser for ELT
 
         Parameters
         ----------
         data:
-            type(list)
+            type(any type that can be converted to a pandas DataFrame)
             Contains a list of Event Losses
 
         Returns
         -------
         """
-        elt_data = pd.DataFrame(data)
+        elt_data = pd.DataFrame(data) if not isinstance(data, pd.DataFrame) else data
         if all(column in list(elt_data.columns.values) for column in ELT.REQUIRED_COLUMNS):
             if 'StandardDev' not in list(elt_data.columns.values):
                 elt_data['StandardDev'] = elt_data['StdDevI'] + elt_data['StdDevC']
