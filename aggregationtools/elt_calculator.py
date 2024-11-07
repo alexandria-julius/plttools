@@ -11,7 +11,7 @@ from scipy.fft import fft, ifft
 from scipy.stats import beta
 from aggregationtools import ELT, ep_curve
 
-logging.basicConfig(level='INFO')
+logging.basicConfig(level='DEBUG')
 logger = logging.getLogger(__name__)
 
 def calculate_oep_curve(elt, grid_size=2**14, max_loss_factor=5):
@@ -75,7 +75,6 @@ def calculate_oep_curve_new(elt):
 
     elt['alpha'] = (1 - elt['mu']) / (elt['StandardDev'] / elt['Mean']) ** 2 - elt['mu']
     elt['alpha'] = numpy.where(elt['alpha'] <= 0, 0.000001, elt['alpha'])
-
 
     elt['alpha'] = np.where(elt['beta'] == 0.000001, np.where(elt['Mean'] / elt['ExpValue'] > 0.999999,
                                           0.00999999, (elt['mu'] * elt['beta']) / (1 - elt['mu'])), elt['alpha'])
