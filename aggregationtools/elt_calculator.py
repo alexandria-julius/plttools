@@ -63,6 +63,7 @@ def calculate_oep_curve_new(elt):
          exceedance probability curve
 
     """
+    print('Starting OEP curve calculation')
     elt_lambda = ELT(elt).get_lambda()
     elt = elt.rename(columns={'Loss': 'Mean'}).sort_values(by='Mean', ascending=False)
     elt['aal'] = elt['Mean'] * elt['Rate']
@@ -97,7 +98,7 @@ def calculate_oep_curve_new(elt):
     diff_means = [_calculate_mean_diff(e, elt) for e in range(len(elt) - 1)]
     oal += sum(diff_means)
     oal += elt.iloc[-1]['Mean'] * (1 - np.exp(-elt_lambda))
-
+    print('Calculating first oep threshold')
     elt_oep = _oep_calculation(elt, elt['ExpValue'].max())
 
     rp_50k = np.interp(1 / 50000, elt_oep['oep'], elt_oep['perspvalue'])
@@ -108,10 +109,10 @@ def calculate_oep_curve_new(elt):
     max_mult = max(1.1, y_mult)
 
     max_loss = min(max_add, max_mult) * rp_50k
-
+    print('Calculating second oep threshold')
     oep_curve = _oep_calculation(elt, max_loss)
     oep = oep_curve[['oep', 'perspvalue']].rename(columns={'oep': 'Probability', 'perspvalue': 'Loss'})
-
+    print('Finished OEP curve calculation')
     return ep_curve.EPCurve(oep, ep_type=ep_curve.EPType.OEP)
 
 def _calculate_mean_diff(index, elt):
