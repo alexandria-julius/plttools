@@ -102,6 +102,7 @@ def calculate_oep_curve_new(elt):
     oal += elt.iloc[-1]['Mean'] * (1 - np.exp(-elt_lambda))
     logger.info('Calculating first oep threshold')
     elt_oep = _oep_calculation(elt, elt['ExpValue'].max())
+    logger.info('Finished first oep threshold calculation')
 
     rp_50k = np.interp(1 / 50000, elt_oep['oep'], elt_oep['perspvalue'])
     rp_50k = max(rp_50k, 10e-6)
@@ -133,18 +134,29 @@ def _oep_calculation(elt, max_loss):
     out :
         exceedance probability curve
     """
+    logger.info('_oep_calculation 1')
     thd = np.concatenate([np.linspace(0, max_loss * 1e-5, 1001)[:1000], np.linspace(max_loss * 1e-5, max_loss, 29000)])
+    logger.info('_oep_calculation 2')
     thd = np.sort(thd)[::-1]
 
+    logger.info('_oep_calculation 3')
     elt['alpha'] = ((elt['mu'] ** 2 * (1 - elt['mu'])) / elt['sigma'] ** 2) - elt['mu']
+    logger.info('_oep_calculation 4')
     elt.loc[elt['alpha'] < 0, 'alpha'] = 10e-6
+    logger.info('_oep_calculation 5')
     elt['beta'] = ((1 - elt['mu']) * elt['alpha']) / elt['mu']
+    logger.info('_oep_calculation 6')
     elt.loc[elt['beta'] < 0, 'beta'] = 10e-6
 
+    logger.info('_oep_calculation 7')
     x_subset = elt[elt['ExpValue'] >= thd.min()]
+    logger.info('_oep_calculation 8')
     temp = beta.cdf(thd[:, None] / x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values)
+    logger.info('_oep_calculation 9')
     oep_value = 1 - np.exp(-np.sum((1 - temp) * x_subset['Rate'].values, axis=1))
+    logger.info('_oep_calculation 10')
     oep = pd.DataFrame({'perspvalue': thd, 'oep': oep_value})
+    logger.info('_oep_calculation 11')
     oep = oep.sort_values(by='perspvalue', ascending=False)
     return oep
 
