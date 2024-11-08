@@ -7,8 +7,8 @@ import numpy
 import math
 import pandas as pd
 import numpy as np
-import tensorflow as tf
-import tensorflow_probability as tfp
+# import tensorflow as tf
+# import tensorflow_probability as tfp
 
 from scipy.fft import fft, ifft
 from scipy.stats import beta
