@@ -7,7 +7,9 @@ import numpy
 import math
 import pandas as pd
 import numpy as np
-from numpy import ndarray
+import tensorflow as tf
+import tensorflow_probability as tfp
+
 from scipy.fft import fft, ifft
 from scipy.stats import beta
 from aggregationtools import ELT, ep_curve
@@ -152,8 +154,15 @@ def _oep_calculation(elt, max_loss):
     logger.info('_oep_calculation 7')
     x_subset = elt[elt['ExpValue'] >= thd.min()]
     logger.info('_oep_calculation 8')
-    temp = np.ndarray(shape=(30000,elt.shape[0]), dtype=float)
-    # temp = beta.cdf(thd[:, None] / x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values)
+    # temp = np.ndarray(shape=(30000,elt.shape[0]), dtype=float)
+
+    # thd_x = thd[:, None] / x_subset['ExpValue'].values
+    # temp = beta.cdf(thd_x, x_subset['alpha'].values, x_subset['beta'].values)
+
+    # use tensorflow to calculate the cdf
+    beta_dist = tfp.distributions.Beta(x_subset['alpha'].values, x_subset['beta'].values)
+    temp = beta_dist.cdf(thd[:, None] / x_subset['ExpValue'].values)
+
     logger.info('_oep_calculation 9')
     oep_value = 1 - np.exp(-np.sum((1 - temp) * x_subset['Rate'].values, axis=1))
     logger.info('_oep_calculation 10')
