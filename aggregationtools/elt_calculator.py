@@ -162,7 +162,7 @@ def _oep_calculation(elt, max_loss):
 
     chunk_size = 1000
     results = []
-    for start in range(0, elt.shape[0], chunk_size):
+    for start in range(0, thd.shape[0], chunk_size):
         end = start + chunk_size
         logger.info('_oep_calculation 8.2')
         thd_chunk = thd[start:end]
