@@ -157,6 +157,7 @@ def _oep_calculation(elt, max_loss):
     # temp = np.ndarray(shape=(30000,elt.shape[0]), dtype=float)
 
     thd_x = (thd[:, None] / x_subset['ExpValue'].values).astype(np.float32)
+    logger.info('_oep_calculation 8.1')
     temp = beta.cdf(thd_x, x_subset['alpha'].values.astype(np.float32), x_subset['beta'].values.astype(np.float32))
 
     # use tensorflow to calculate the cdf
