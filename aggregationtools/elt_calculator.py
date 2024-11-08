@@ -156,10 +156,22 @@ def _oep_calculation(elt, max_loss):
     logger.info('_oep_calculation 8')
     # temp = np.ndarray(shape=(30000,elt.shape[0]), dtype=float)
 
-    thd_x = (thd[:, None] / x_subset['ExpValue'].values).astype(np.float32)
+    # thd_x = (thd[:, None] / x_subset['ExpValue'].values).astype(np.float32)
     logger.info('_oep_calculation 8.1')
-    temp = beta.cdf(thd_x, x_subset['alpha'].values.astype(np.float32), x_subset['beta'].values.astype(np.float32))
+    # temp = beta.cdf(thd_x, x_subset['alpha'].values.astype(np.float32), x_subset['beta'].values.astype(np.float32))
 
+    chunk_size = 1000
+    results = []
+    for start in range(0, elt.shape[0], chunk_size):
+        end = start + chunk_size
+        logger.info('_oep_calculation 8.2')
+        thd_chunk = thd[start:end]
+        logger.info('_oep_calculation 8.3')
+        temp_chunk = beta.cdf(thd_chunk[:, None] / x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values)
+        logger.info('_oep_calculation 8.4')
+        results.append(temp_chunk)
+    logger.info('_oep_calculation 8.5')
+    temp = np.concatenate(results, axis=0)
     # use tensorflow to calculate the cdf
     # beta_dist = tfp.distributions.Beta(x_subset['alpha'].values, x_subset['beta'].values)
     # temp = beta_dist.cdf(thd[:, None] / x_subset['ExpValue'].values)
