@@ -156,12 +156,12 @@ def _oep_calculation(elt, max_loss):
     logger.info('_oep_calculation 8')
     # temp = np.ndarray(shape=(30000,elt.shape[0]), dtype=float)
 
-    # thd_x = thd[:, None] / x_subset['ExpValue'].values
-    # temp = beta.cdf(thd_x, x_subset['alpha'].values, x_subset['beta'].values)
+    thd_x = (thd[:, None] / x_subset['ExpValue'].values).astype(np.float32)
+    temp = beta.cdf(thd_x, x_subset['alpha'].values.astype(np.float32), x_subset['beta'].values.astype(np.float32))
 
     # use tensorflow to calculate the cdf
-    beta_dist = tfp.distributions.Beta(x_subset['alpha'].values, x_subset['beta'].values)
-    temp = beta_dist.cdf(thd[:, None] / x_subset['ExpValue'].values)
+    # beta_dist = tfp.distributions.Beta(x_subset['alpha'].values, x_subset['beta'].values)
+    # temp = beta_dist.cdf(thd[:, None] / x_subset['ExpValue'].values)
 
     logger.info('_oep_calculation 9')
     oep_value = 1 - np.exp(-np.sum((1 - temp) * x_subset['Rate'].values, axis=1))
