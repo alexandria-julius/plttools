@@ -7,8 +7,7 @@ import numpy
 import math
 import pandas as pd
 import numpy as np
-# import tensorflow as tf
-# import tensorflow_probability as tfp
+from concurrent.futures import ThreadPoolExecutor
 
 from scipy.fft import fft, ifft
 from scipy.stats import beta
@@ -82,13 +81,13 @@ def calculate_oep_curve_new(elt):
     elt['alpha'] = np.where(elt['beta'] == 0.000001, np.where(elt['Mean'] / elt['ExpValue'] > 0.999999,
                                           0.00999999, (elt['mu'] * elt['beta']) / (1 - elt['mu'])), elt['alpha'])
 
-    elt['sev_skew'] = (2 * (elt['beta'] - elt['alpha'])) / ((2 * elt['alpha']) + elt['beta']) * np.sqrt((elt['alpha'] + elt['beta'] + 1) / (elt['alpha'] * elt['beta']))
-    elt['agg_skew'] = elt['Rate'] * (((elt['StandardDev'] ** 3) * elt['sev_skew']) + (3 * elt['Mean'] * elt['StandardDev'] ** 2) + elt['Mean'] ** 3)
+    sev_skew = (2 * (elt['beta'] - elt['alpha'])) / ((2 * elt['alpha']) + elt['beta']) * np.sqrt((elt['alpha'] + elt['beta'] + 1) / (elt['alpha'] * elt['beta']))
+    elt_agg_skew = elt['Rate'] * (((elt['StandardDev'] ** 3) * sev_skew) + (3 * elt['Mean'] * elt['StandardDev'] ** 2) + elt['Mean'] ** 3)
 
-    aal = elt['aal'].sum()
+    aal = elt.sum()
     agg_var = elt['agg_var'].sum()
     agg_cv = np.sqrt(agg_var) / aal
-    agg_skew = elt['agg_skew'].sum() / agg_var ** 1.5
+    agg_skew = elt_agg_skew.sum() / agg_var ** 1.5
 
     wtd_mu = elt['wtd_mu'].sum()
 
@@ -100,11 +99,13 @@ def calculate_oep_curve_new(elt):
     positive_agg_skew = max(agg_skew, 10 ** -8)
 
     oal = 0
-    diff_means = [_calculate_mean_diff(e, elt) for e in range(len(elt) - 1)]
-    oal += sum(diff_means)
+    diff_means = elt['Mean'].values[:-1] - elt['Mean'].values[1:]
+    sum_rates = np.cumsum(elt['Rate'].values[:-1])
+    oal += sum(diff_means * (1 - np.exp(-sum_rates)))
     oal += elt.iloc[-1]['Mean'] * (1 - np.exp(-elt_lambda))
     logger.info('Calculating first oep threshold')
-    elt_oep = _oep_calculation(elt, elt['ExpValue'].max())
+    elt_data = elt[["mu", "sigma", "ExpValue", "Rate"]]
+    elt_oep = _oep_calculation(elt_data, elt['ExpValue'].max())
     logger.info('Finished first oep threshold calculation')
 
     rp_50k = np.interp(1 / 50000, elt_oep['oep'], elt_oep['perspvalue'])
@@ -116,15 +117,10 @@ def calculate_oep_curve_new(elt):
 
     max_loss = min(max_add, max_mult) * rp_50k
     logger.info('Calculating second oep threshold')
-    oep_curve = _oep_calculation(elt, max_loss)
+    oep_curve = _oep_calculation(elt_data, max_loss)
     oep = oep_curve[['oep', 'perspvalue']].rename(columns={'oep': 'Probability', 'perspvalue': 'Loss'})
     logger.info('Finished OEP curve calculation')
     return ep_curve.EPCurve(oep, ep_type=ep_curve.EPType.OEP)
-
-def _calculate_mean_diff(index, elt):
-    diff_mean = elt.iloc[index]['Mean'] - elt.iloc[index + 1]['Mean']
-    sum_rate = elt.iloc[:index + 1]['Rate'].sum()
-    return diff_mean * (1 - np.exp(-sum_rate))
 
 def _oep_calculation(elt, max_loss):
     """ This function calculates the OEP of a given ELT
@@ -143,39 +139,41 @@ def _oep_calculation(elt, max_loss):
     thd = np.sort(thd)[::-1]
 
     logger.info('_oep_calculation 3')
-    elt['alpha'] = ((elt['mu'] ** 2 * (1 - elt['mu'])) / elt['sigma'] ** 2) - elt['mu']
+    elt.loc[:, 'alpha'] = ((elt['mu'] ** 2 * (1 - elt['mu'])) / elt['sigma'] ** 2) - elt['mu']
+    # elt['alpha'] = ((elt['mu'] ** 2 * (1 - elt['mu'])) / elt['sigma'] ** 2) - elt['mu']
     logger.info('_oep_calculation 4')
     elt.loc[elt['alpha'] < 0, 'alpha'] = 10e-6
     logger.info('_oep_calculation 5')
-    elt['beta'] = ((1 - elt['mu']) * elt['alpha']) / elt['mu']
+    elt.loc[:, 'beta'] = ((1 - elt['mu']) * elt['alpha']) / elt['mu']
     logger.info('_oep_calculation 6')
     elt.loc[elt['beta'] < 0, 'beta'] = 10e-6
 
-    logger.info('_oep_calculation 7')
-    x_subset = elt[elt['ExpValue'] >= thd.min()]
-    logger.info('_oep_calculation 8')
+    # logger.info('_oep_calculation 7')
+    # x_subset = elt[elt['ExpValue'] >= thd.min()]
+    # logger.info('_oep_calculation 8')
     # temp = np.ndarray(shape=(30000,elt.shape[0]), dtype=float)
 
     # thd_x = (thd[:, None] / x_subset['ExpValue'].values).astype(np.float32)
-    logger.info('_oep_calculation 8.1')
+    # logger.info('_oep_calculation 8.1')
     # temp = beta.cdf(thd_x, x_subset['alpha'].values.astype(np.float32), x_subset['beta'].values.astype(np.float32))
 
     chunk_size = 1000
     results = []
-    x_subset_exp_value = x_subset['ExpValue'].values
-    x_subset_alpha = x_subset['alpha'].values
-    x_subset_beta = x_subset['beta'].values
-    x_subset_rate = x_subset['Rate'].values
-    for start in range(0, thd.shape[0], chunk_size):
-        end = start + chunk_size
+
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for start in range(0, thd.shape[0], chunk_size):
+            logger.info('_oep_calculation 8.1')
+            end = start + chunk_size
+            thd_chunk = thd[start:end]
+            x_subset = elt[elt['ExpValue'] >= thd_chunk.min()]
+            x_subset_exp_value = x_subset['ExpValue'].values
+            x_subset_alpha = x_subset['alpha'].values
+            x_subset_beta = x_subset['beta'].values
+            x_subset_rate = x_subset['Rate'].values
+            futures.append(executor.submit(_calculate_oep_chunk, thd_chunk, x_subset_exp_value, x_subset_alpha, x_subset_beta, x_subset_rate))
         logger.info('_oep_calculation 8.2')
-        thd_chunk = thd[start:end]
-        logger.info('_oep_calculation 8.3')
-        temp_chunk = beta.cdf(thd_chunk[:, None] / x_subset_exp_value, x_subset_alpha, x_subset_beta)
-        logger.info('_oep_calculation 8.4')
-        logger.info('_oep_calculation 8.5')
-        oep_value_chunk = 1 - np.exp(-np.sum((1 - temp_chunk) * x_subset_rate, axis=1))
-        results.append(oep_value_chunk)
+        results = [future.result() for future in futures]
     logger.info('_oep_calculation 9')
     oep_value = np.concatenate(results, axis=0)
     # temp = np.concatenate(results, axis=0)
@@ -190,6 +188,12 @@ def _oep_calculation(elt, max_loss):
     logger.info('_oep_calculation 11')
     oep = oep.sort_values(by='perspvalue', ascending=False)
     return oep
+
+def _calculate_oep_chunk(thd_chunk, x_subset_exp_value, x_subset_alpha, x_subset_beta, x_subset_rate):
+    temp_chunk = beta.cdf(thd_chunk[:, None] / x_subset_exp_value, x_subset_alpha, x_subset_beta)
+    oep_value_chunk = 1 - np.exp(-np.sum((1 - temp_chunk) * x_subset_rate, axis=1))
+    return oep_value_chunk
+
 
 def calculate_aep_curve(elt, grid_size=2**14, max_loss_factor=5):
     """ This function calculates the OEP of a given ELT
