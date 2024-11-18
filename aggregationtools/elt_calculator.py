@@ -129,14 +129,6 @@ def _oep_calculation(elt_data, max_loss):
     elt_data.loc[elt_data['beta'] < 0, 'beta'] = 10e-6
     print("Thresholds looping")
     chunk_size = 1000
-    # with ThreadPoolExecutor() as executor:
-    #     futures = []
-    #     for start in range(0, thd.shape[0], chunk_size):
-    #         end = start + chunk_size
-    #         thd_chunk = thd[start:end]
-    #         x_subset = elt_data[elt_data['ExpValue'] >= thd_chunk.min()]
-    #         futures.append(executor.submit(_calculate_oep_chunk, thd_chunk, x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values, x_subset['Rate'].values))
-    #     results = [future.result() for future in futures]
     results = Parallel(n_jobs=5)(
         delayed(process_chunk)(start, start + chunk_size, thd, elt_data) for start in range(0, thd.shape[0], chunk_size)
     )
