@@ -8,12 +8,12 @@ import math
 import pandas as pd
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
-
+import tensorflow_probability as tfp
 from scipy.fft import fft, ifft
 from scipy.stats import beta
 from aggregationtools import ELT, ep_curve
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
 
 def calculate_oep_curve(elt, grid_size=2**14, max_loss_factor=5):
@@ -84,7 +84,7 @@ def calculate_oep_curve_new(elt):
     sev_skew = (2 * (elt['beta'] - elt['alpha'])) / ((2 * elt['alpha']) + elt['beta']) * np.sqrt((elt['alpha'] + elt['beta'] + 1) / (elt['alpha'] * elt['beta']))
     elt_agg_skew = elt['Rate'] * (((elt['StandardDev'] ** 3) * sev_skew) + (3 * elt['Mean'] * elt['StandardDev'] ** 2) + elt['Mean'] ** 3)
 
-    aal = elt.sum()
+    aal = elt['aal'].sum()
     agg_var = elt['agg_var'].sum()
     agg_cv = np.sqrt(agg_var) / aal
     agg_skew = elt_agg_skew.sum() / agg_var ** 1.5
@@ -139,12 +139,12 @@ def _oep_calculation(elt_data, max_loss):
     thd = np.sort(thd)[::-1]
 
     logger.info('_oep_calculation 3')
-    elt_data.loc[:, 'alpha'] = ((elt_data['mu'] ** 2 * (1 - elt_data['mu'])) / elt_data['sigma'] ** 2) - elt_data['mu']
+    elt_data.loc[:, ['alpha']] = ((elt_data['mu'] ** 2 * (1 - elt_data['mu'])) / elt_data['sigma'] ** 2) - elt_data['mu']
     # elt['alpha'] = ((elt['mu'] ** 2 * (1 - elt['mu'])) / elt['sigma'] ** 2) - elt['mu']
     logger.info('_oep_calculation 4')
     elt_data.loc[elt_data['alpha'] < 0, 'alpha'] = 10e-6
     logger.info('_oep_calculation 5')
-    elt_data.loc[:, 'beta'] = ((1 - elt_data['mu']) * elt_data['alpha']) / elt_data['mu']
+    elt_data.loc[:, ['beta']] = ((1 - elt_data['mu']) * elt_data['alpha']) / elt_data['mu']
     logger.info('_oep_calculation 6')
     elt_data.loc[elt_data['beta'] < 0, 'beta'] = 10e-6
 
@@ -155,18 +155,9 @@ def _oep_calculation(elt_data, max_loss):
     # thd_x = (thd[:, None] / x_subset['ExpValue'].values).astype(np.float32)
     # logger.info('_oep_calculation 8.1')
     # temp = beta.cdf(thd_x, x_subset['alpha'].values.astype(np.float32), x_subset['beta'].values.astype(np.float32))
-    oep = pd.DataFrame()
     logger.info('_oep_calculation 7')
     x_subset = elt_data[elt_data['ExpValue'] >= thd.min()]
-    for thd in thd:
-        logger.info('_oep_calculation 8.1')
-        x_subset = x_subset[x_subset['ExpValue'] >= thd]
-        logger.info('_oep_calculation 8.2')
-        temp = beta.cdf(thd / x_subset['ExpValue'], x_subset['alpha'], x_subset['beta'])
-        logger.info('_oep_calculation 8.3')
-        oep_value = 1 - np.exp(-np.sum((1 - temp) * x_subset['Rate']))
-        logger.info('_oep_calculation 8.4')
-        oep = pd.concat([oep, pd.DataFrame([{'perspvalue': thd, 'oep': oep_value}])], ignore_index=True)
+    logger.info('_oep_calculation 8')
     # chunk_size = 1000
     # results = []
     #
@@ -188,13 +179,13 @@ def _oep_calculation(elt_data, max_loss):
     # oep_value = np.concatenate(results, axis=0)
     # temp = np.concatenate(results, axis=0)
     # use tensorflow to calculate the cdf
-    # beta_dist = tfp.distributions.Beta(x_subset['alpha'].values, x_subset['beta'].values)
-    # temp = beta_dist.cdf(thd[:, None] / x_subset['ExpValue'].values)
+    beta_dist = tfp.distributions.Beta(x_subset['alpha'].values, x_subset['beta'].values)
+    temp = beta_dist.cdf(thd[:, None] / x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values)
 
     # logger.info('_oep_calculation 9')
-    # oep_value = 1 - np.exp(-np.sum((1 - temp) * x_subset['Rate'].values, axis=1))
+    oep_value = 1 - np.exp(-np.sum((1 - temp) * x_subset['Rate'].values, axis=1))
     # logger.info('_oep_calculation 10')
-    # oep = pd.DataFrame({'perspvalue': thd, 'oep': oep_value})
+    oep = pd.DataFrame({'perspvalue': thd, 'oep': oep_value})
     # logger.info('_oep_calculation 11')
     # oep = oep.sort_values(by='perspvalue', ascending=False)
     return oep
