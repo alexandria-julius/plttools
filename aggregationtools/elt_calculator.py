@@ -137,7 +137,7 @@ def _oep_calculation(elt_data, max_loss):
     #         x_subset = elt_data[elt_data['ExpValue'] >= thd_chunk.min()]
     #         futures.append(executor.submit(_calculate_oep_chunk, thd_chunk, x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values, x_subset['Rate'].values))
     #     results = [future.result() for future in futures]
-    results = Parallel(n_jobs=num_of_jobs)(
+    results = Parallel(n_jobs=5)(
         delayed(process_chunk)(start, start + chunk_size, thd, elt_data) for start in range(0, thd.shape[0], chunk_size)
     )
 
