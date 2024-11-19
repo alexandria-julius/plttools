@@ -5,7 +5,6 @@ import numpy
 import math
 import pandas as pd
 import numpy as np
-from joblib import Parallel, delayed
 from scipy.fft import fft, ifft
 from scipy.stats import beta
 from aggregationtools import ELT, ep_curve
@@ -127,11 +126,23 @@ def _oep_calculation(elt_data, max_loss):
     elt_data.loc[elt_data['alpha'] < 0, 'alpha'] = 10e-6
     elt_data.loc[:, ['beta']] = ((1 - elt_data['mu']) * elt_data['alpha']) / elt_data['mu']
     elt_data.loc[elt_data['beta'] < 0, 'beta'] = 10e-6
-    print("Thresholds looping")
+
     chunk_size = 1000
-    results = Parallel(n_jobs=5)(
-        delayed(process_chunk)(start, start + chunk_size, thd, elt_data) for start in range(0, thd.shape[0], chunk_size)
-    )
+    results = []
+    x_subset = elt_data[elt_data['ExpValue'] >= thd.min()]
+    for start in range(0, thd.shape[0], chunk_size):
+        end = start + chunk_size
+        thd_chunk = thd[start:end]
+        x_subset = x_subset[x_subset['ExpValue'] >= thd_chunk.min()]
+        x_subset_exp_value = x_subset['ExpValue'].values
+        x_subset_alpha = x_subset['alpha'].values
+        x_subset_beta = x_subset['beta'].values
+        x_subset_rate = x_subset['Rate'].values
+
+        temp_chunk = beta.cdf(thd_chunk[:, None] / x_subset_exp_value, x_subset_alpha, x_subset_beta)
+        temp_chunk[np.isnan(temp_chunk)] = 0
+        oep_value_chunk = 1 - np.exp(-np.sum((1 - temp_chunk) * x_subset_rate, axis=1))
+        results.append(oep_value_chunk)
 
     oep_value = np.concatenate(results, axis=0)
     oep = pd.DataFrame({'perspvalue': thd, 'oep': oep_value})
