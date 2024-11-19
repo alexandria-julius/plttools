@@ -129,20 +129,12 @@ def _oep_calculation(elt_data, max_loss):
 
     chunk_size = 1000
     results = []
-    x_subset = elt_data[elt_data['ExpValue'] >= thd.min()]
     for start in range(0, thd.shape[0], chunk_size):
         end = start + chunk_size
         thd_chunk = thd[start:end]
-        x_subset = x_subset[x_subset['ExpValue'] >= thd_chunk.min()]
-        x_subset_exp_value = x_subset['ExpValue'].values
-        x_subset_alpha = x_subset['alpha'].values
-        x_subset_beta = x_subset['beta'].values
-        x_subset_rate = x_subset['Rate'].values
-
-        temp_chunk = beta.cdf(thd_chunk[:, None] / x_subset_exp_value, x_subset_alpha, x_subset_beta)
-        temp_chunk[np.isnan(temp_chunk)] = 0
-        oep_value_chunk = 1 - np.exp(-np.sum((1 - temp_chunk) * x_subset_rate, axis=1))
-        results.append(oep_value_chunk)
+        x_subset = elt_data[elt_data['ExpValue'] >= thd_chunk.min()]
+        result = _calculate_oep_chunk(thd_chunk, x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values, x_subset['Rate'].values)
+        results.append(result)
 
     oep_value = np.concatenate(results, axis=0)
     oep = pd.DataFrame({'perspvalue': thd, 'oep': oep_value})
@@ -150,14 +142,9 @@ def _oep_calculation(elt_data, max_loss):
     return oep
 
 
-def process_chunk(start, end, thd, elt_data):
-    thd_chunk = thd[start:end]
-    x_subset = elt_data[elt_data['ExpValue'] >= thd_chunk.min()]
-    return _calculate_oep_chunk(thd_chunk, x_subset['ExpValue'].values, x_subset['alpha'].values, x_subset['beta'].values, x_subset['Rate'].values)
-
-
 def _calculate_oep_chunk(thd_chunk, x_subset_exp_value, x_subset_alpha, x_subset_beta, x_subset_rate):
     temp_chunk = beta.cdf(thd_chunk[:, None] / x_subset_exp_value, x_subset_alpha, x_subset_beta)
+    temp_chunk[np.isnan(temp_chunk)] = 0
     oep_value_chunk = 1 - np.exp(-np.sum((1 - temp_chunk) * x_subset_rate, axis=1))
     return oep_value_chunk
 
