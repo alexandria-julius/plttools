@@ -127,7 +127,7 @@ def _oep_calculation(elt_data, max_loss):
     elt_data.loc[:, ['beta']] = ((1 - elt_data['mu']) * elt_data['alpha']) / elt_data['mu']
     elt_data.loc[elt_data['beta'] < 0, 'beta'] = 10e-6
 
-    chunk_size = 1000
+    chunk_size = 200
     results = []
     for start in range(0, thd.shape[0], chunk_size):
         end = start + chunk_size
