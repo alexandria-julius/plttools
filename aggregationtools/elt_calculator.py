@@ -68,10 +68,9 @@ def calculate_oep_curve_new(elt):
     elt['wtd_mu'] = elt['aal'] * elt['mu']
     elt['agg_var'] = elt['Rate'] * (elt['Mean'] ** 2 + elt['StandardDev'] ** 2)
 
-    #elt['alpha'] = (1 - elt['mu']) / (elt['StandardDev'] / elt['Mean']) ** 2 - elt['mu']
-    elt['alpha'] = numpy.max((1 - elt['mu']) / (elt['StandardDev'] / elt['Mean']) ** 2 - elt['mu'])
+    elt['alpha'] = (1 - elt['mu']) / (elt['StandardDev'] / elt['Mean']) ** 2 - elt['mu']
     elt['alpha'] = numpy.where(elt['alpha'] <= 0, 0.000001, elt['alpha'])
-    elt['beta'] = numpy.max(elt['alpha'] * (1 - elt['Mean'] / elt['ExpValue']) / (elt['Mean'] / elt['ExpValue']))
+    elt['beta'] = elt['alpha'] * (1 - elt['Mean'] / elt['ExpValue']) / (elt['Mean'] / elt['ExpValue'])
     elt['beta'] = numpy.where(elt['beta'] <= 0, 0.000001, elt['beta'])
 
     elt['alpha'] = np.where(elt['beta'] == 0.000001, np.where(elt['Mean'] / elt['ExpValue'] > 0.999999,
