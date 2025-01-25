@@ -106,6 +106,8 @@ class EPCurve:
         self.curve = self.curve[~self.curve.index.duplicated(keep='first')]
         if self.ep_type == EPType.TCE_OEP:
             self.curve = self.curve.sort_index(ascending=True)
+        elif self.ep_type == EPType.OEP:
+            self.curve = self.curve.sort_index(ascending=True)
         else:
             self.curve = self.curve.reindex(self.curve.index.union(probabilities)).sort_index(
                 ascending=True).interpolate(method='index')
