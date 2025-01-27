@@ -68,13 +68,18 @@ def calculate_oep_curve_new(elt):
     elt['wtd_mu'] = elt['aal'] * elt['mu']
     elt['agg_var'] = elt['Rate'] * (elt['Mean'] ** 2 + elt['StandardDev'] ** 2)
 
-    elt['alpha'] = numpy.max((1 - elt['mu']) / (elt['StandardDev'] / elt['Mean']) ** 2 - elt['mu'])
-    elt['alpha'] = numpy.where(elt['alpha'] <= 0, 0.000001, elt['alpha'])
-    elt['beta'] = numpy.max(elt['alpha'] * (1 - elt['Mean'] / elt['ExpValue']) / (elt['Mean'] / elt['ExpValue']))
-    elt['beta'] = numpy.where(elt['beta'] <= 0, 0.000001, elt['beta'])
+    elt['alpha'] = (1 - elt['mu']) / (elt['StandardDev'] / elt['Mean']) ** 2 - elt['mu']
+    elt['alpha'] = np.where(elt['alpha'] <= 0.000001, 0.000001, elt['alpha'])
+    elt['beta'] = elt['alpha'] * (1 - elt['Mean'] / elt['ExpValue']) / (elt['Mean'] / elt['ExpValue'])
+    elt['beta'] = np.where(elt['beta'] <= 0.000001, 0.000001, elt['beta'])
+
+    elt['alpha'] = elt['alpha'].apply(lambda x: 0 if np.isnan(x) else x)
+    elt['beta'] = elt['beta'].apply(lambda x: 0 if np.isnan(x) else x)
 
     elt['alpha'] = np.where(elt['beta'] == 0.000001, np.where(elt['Mean'] / elt['ExpValue'] > 0.999999,
                                           0.00999999, (elt['mu'] * elt['beta']) / (1 - elt['mu'])), elt['alpha'])
+
+    
 
     sev_skew = (2 * (elt['beta'] - elt['alpha'])) / ((2 * elt['alpha']) + elt['beta']) * np.sqrt((elt['alpha'] + elt['beta'] + 1) / (elt['alpha'] * elt['beta']))
     elt_agg_skew = elt['Rate'] * (((elt['StandardDev'] ** 3) * sev_skew) + (3 * elt['Mean'] * elt['StandardDev'] ** 2) + elt['Mean'] ** 3)
